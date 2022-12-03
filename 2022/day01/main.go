@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/otsec/advent-of-code/util"
+	"github.com/alexchao26/advent-of-code-go/util"
 )
 
 func main() {

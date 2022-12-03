@@ -4,8 +4,9 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/otsec/advent-of-code/util"
 	"strings"
+
+	"github.com/alexchao26/advent-of-code-go/util"
 )
 
 //go:embed input.txt

@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/otsec/advent-of-code/util"
 	"strings"
+
+	"github.com/alexchao26/advent-of-code-go/util"
 )
 
 func main() {
