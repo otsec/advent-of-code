@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/alexchao26/advent-of-code-go/util"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/alexchao26/advent-of-code-go/util"
 )
 
 func main() {

@@ -5,10 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/alexchao26/advent-of-code-go/cast"
+	"github.com/alexchao26/advent-of-code-go/util"
 	"sort"
 	"strings"
-
-	"github.com/alexchao26/advent-of-code-go/util"
 )
 
 //go:embed input.txt

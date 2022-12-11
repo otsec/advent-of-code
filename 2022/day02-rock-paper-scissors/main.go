@@ -3,9 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"strings"
-
 	"github.com/alexchao26/advent-of-code-go/util"
+	"strings"
 )
 
 func main() {
