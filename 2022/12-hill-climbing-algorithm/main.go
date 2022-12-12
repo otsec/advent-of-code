@@ -42,11 +42,11 @@ func part1(input string) (ans int) {
 	start := findSymbol(heightGrid, 'S')
 	end := findSymbol(heightGrid, 'E')
 
-	lookup(heightGrid, stepsGrid, start, 1)
+	lookup(&heightGrid, &stepsGrid, start, 1)
 
 	// printSteps(stepsGrid)
 
-	return (*stepsGrid)[end.y][end.x] - 1
+	return stepsGrid[end.y][end.x] - 1
 }
 
 func part2(input string) (ans int) {
@@ -55,17 +55,17 @@ func part2(input string) (ans int) {
 	// hack: use only first vertical line as a start points
 	// - I saw that my input has 'a' only there
 	// - Example has few 'a' on second line, but we know that best start is still on the first line
-	for y := 0; y < len(*heightGrid); y++ {
+	for y := 0; y < len(heightGrid); y++ {
 		start := Coordinate{0, y}
-		lookup(heightGrid, stepsGrid, start, 1)
+		lookup(&heightGrid, &stepsGrid, start, 1)
 	}
 
 	end := findSymbol(heightGrid, 'E')
-	return (*stepsGrid)[end.y][end.x] - 1
+	return stepsGrid[end.y][end.x] - 1
 }
 
-func findSymbol(heightGrid *[][]rune, symbol rune) Coordinate {
-	for y, line := range *heightGrid {
+func findSymbol(heightGrid [][]rune, symbol rune) Coordinate {
+	for y, line := range heightGrid {
 		for x, char := range line {
 			if char == symbol {
 				return Coordinate{x, y}
@@ -131,7 +131,7 @@ func canStep(heightGrid *[][]rune, from Coordinate, to Coordinate) bool {
 	return int(valTo)-int(valFrom) <= 1
 }
 
-func parseInput(input string) (*[][]rune, *[][]int) {
+func parseInput(input string) ([][]rune, [][]int) {
 	lines := strings.Split(input, "\n")
 
 	heightGrid := make([][]rune, len(lines))
@@ -142,7 +142,7 @@ func parseInput(input string) (*[][]rune, *[][]int) {
 		stepsGrid[i] = make([]int, len(heightGrid[i]))
 	}
 
-	return &heightGrid, &stepsGrid
+	return heightGrid, stepsGrid
 }
 
 type Coordinate struct {
