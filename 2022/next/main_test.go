@@ -1,10 +1,12 @@
 package main
 
 import (
+	_ "embed"
 	"testing"
 )
 
-var example = ``
+//go:embed input_test.txt
+var example string
 
 func Test_part1(t *testing.T) {
 	tests := []struct {
