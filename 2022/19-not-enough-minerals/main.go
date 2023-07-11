@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"github.com/alexchao26/advent-of-code-go/cast"
 	"github.com/alexchao26/advent-of-code-go/util"
+	"github.com/emirpasic/gods/maps/hashmap"
+	llq "github.com/emirpasic/gods/queues/linkedlistqueue"
 	"log"
 	"regexp"
 	"strings"
+	"time"
 )
 
 //go:embed input.txt
@@ -42,216 +45,93 @@ func main() {
 func part1(input string) (ans int) {
 	blueprints := parseInput(input)
 
-	resources := []RESOURCE_TYPE{
-		RESOURCE_ORE,
-		RESOURCE_CLAY,
-		RESOURCE_OBSIDIAN,
-		RESOURCE_GEODE,
+	//var wg sync.WaitGroup
+	//for index, blueprint := range blueprints {
+	//	wg.Add(1)
+	//
+	//	go func(number int, blueprint Blueprint) {
+	//		defer wg.Done()
+	//
+	//		maxGeodes := findBestAlgorythm(blueprint, 24)
+	//		fmt.Println(number, maxGeodes)
+	//		ans += number * maxGeodes
+	//	}(index+1, blueprint)
+	//}
+	//wg.Wait()
+
+	for _, blueprint := range blueprints {
+		maxGeodes := findBestAlgorythm(blueprint, 24)
+		fmt.Printf("Blueprint %v. Max geodes: %v.\n", blueprint.number, maxGeodes)
+		ans += blueprint.number * maxGeodes
 	}
 
-	// 1, 2, 0, 0, 5, 30, 56, 16, 9, 40, 0, 48, 13, 168, 120, 0, 0, 90, 95, 0, 21, 110, 115, 0, 325, 0, 189, 84, 0, 210
-
-	for bi, blueprint := range blueprints {
-		variants := []Context{
-			createContext(blueprint),
-		}
-
-		ansBlu := 0
-		cache := make(map[string]bool)
-
-		for m := 1; m <= 24; m++ {
-			stats := struct {
-				obsidianRobotsMin, obsidianRobotsMax int
-				geodesMin, geodesMax                 int
-			}{
-				obsidianRobotsMin: variants[0].robots[RESOURCE_OBSIDIAN],
-				obsidianRobotsMax: variants[0].robots[RESOURCE_OBSIDIAN],
-				geodesMin:         variants[0].storage[RESOURCE_GEODE],
-				geodesMax:         variants[0].storage[RESOURCE_GEODE],
-			}
-
-			// maybe build a robot
-			for _, ctx := range variants {
-				cacheKey := fmt.Sprint(m, ctx.robots, ctx.production, ctx.storage)
-				cache[cacheKey] = true
-
-				for _, resource := range resources {
-					if canBuild(&ctx, resource) {
-						next := copyContext(&ctx)
-						startProduction(&next, resource)
-
-						cacheKey = fmt.Sprint(m, next.robots, next.production, next.storage)
-						if _, found := cache[cacheKey]; !found {
-							variants = append(variants, next)
-							cache[cacheKey] = true
-						}
-					}
-				}
-			}
-
-			// exec all variants
-			for _, ctx := range variants {
-				harvest(&ctx)
-				finishProduction(&ctx)
-
-				// stats
-				stats.obsidianRobotsMin = min(stats.obsidianRobotsMin, ctx.robots[RESOURCE_OBSIDIAN])
-				stats.obsidianRobotsMax = max(stats.obsidianRobotsMax, ctx.robots[RESOURCE_OBSIDIAN])
-				stats.geodesMin = min(stats.geodesMin, ctx.storage[RESOURCE_GEODE])
-				stats.geodesMax = max(stats.geodesMax, ctx.storage[RESOURCE_GEODE])
-			}
-
-			// filter by obsidian robots
-			if stats.obsidianRobotsMax > 3 && stats.obsidianRobotsMin == 0 {
-				filtered := []Context{}
-				for _, ctx := range variants {
-					if ctx.robots[RESOURCE_OBSIDIAN] == 0 {
-						continue
-					}
-					filtered = append(filtered, ctx)
-				}
-				variants = filtered
-			}
-			if stats.obsidianRobotsMax-stats.obsidianRobotsMin > 3 {
-				filtered := []Context{}
-				for _, ctx := range variants {
-					if stats.obsidianRobotsMax-ctx.robots[RESOURCE_OBSIDIAN] > 3 {
-						continue
-					}
-					filtered = append(filtered, ctx)
-				}
-				variants = filtered
-			}
-
-			// filter by geodes
-			if stats.geodesMax-stats.geodesMin > 3 {
-				filtered := []Context{}
-				for _, ctx := range variants {
-					if stats.geodesMax-ctx.storage[RESOURCE_GEODE] > 3 {
-						continue
-					}
-					filtered = append(filtered, ctx)
-				}
-				variants = filtered
-			}
-
-			//if m == 20 && stats.geodesMax == 0 {
-			//	break
-			//}
-
-			ansVar := stats.geodesMax * (bi + 1) // + len(blueprints)
-			if ansVar > ansBlu {
-				ansBlu = ansVar
-			}
-
-			fmt.Println("Blueprint", bi+1, "min", m, "cache", len(cache), "stats", stats)
-		}
-
-		fmt.Println("Blueprint", bi+1, "geodes", ansBlu)
-
-		ans += ansBlu
-	}
+	//{
+	//	number := 2
+	//	blueprint := blueprints[1]
+	//	maxGeodes := findBestAlgorythm(blueprint, 24)
+	//	fmt.Printf("Blueprint %v. Max geodes: %v.\n", number, maxGeodes)
+	//	ans += number * maxGeodes
+	//}
 
 	return ans
 }
 
 func part2(input string) (ans int) {
-	parsed := parseInput(input)
-	_ = parsed
+	blueprints := parseInput(input)
+
+	for _, blueprint := range blueprints {
+		maxGeodes := findBestAlgorythm(blueprint, 32)
+		fmt.Printf("Blueprint %v. Max geodes: %v.\n", blueprint.number, maxGeodes)
+		ans += blueprint.number * maxGeodes
+	}
 
 	return ans
 }
 
-type RESOURCE_TYPE int
+type ResourceType int
+type RobotType ResourceType
 
 const (
-	RESOURCE_ORE RESOURCE_TYPE = iota
+	RESOURCE_ORE ResourceType = iota
 	RESOURCE_CLAY
 	RESOURCE_OBSIDIAN
 	RESOURCE_GEODE
 )
 
-type Blueprint map[RESOURCE_TYPE]map[RESOURCE_TYPE]int
+type ProductionCost = [4]int
+
+type Blueprint struct {
+	number int
+	robots map[RobotType]ProductionCost
+}
 
 type Context struct {
 	minute     int
 	blueprint  Blueprint
-	production map[RESOURCE_TYPE]int
-	robots     map[RESOURCE_TYPE]int
-	storage    map[RESOURCE_TYPE]int
+	robots     [4]int
+	storage    [4]int
+	production RobotType // or -1 if nothing is building right now
 }
 
-func createContext(blueprint Blueprint) Context {
-	return Context{
-		blueprint: blueprint,
-		production: map[RESOURCE_TYPE]int{
-			RESOURCE_ORE:      0,
-			RESOURCE_CLAY:     0,
-			RESOURCE_OBSIDIAN: 0,
-			RESOURCE_GEODE:    0,
-		},
-		robots: map[RESOURCE_TYPE]int{
-			RESOURCE_ORE:      1,
-			RESOURCE_CLAY:     0,
-			RESOURCE_OBSIDIAN: 0,
-			RESOURCE_GEODE:    0,
-		},
-		storage: map[RESOURCE_TYPE]int{
-			RESOURCE_ORE:      0,
-			RESOURCE_CLAY:     0,
-			RESOURCE_OBSIDIAN: 0,
-			RESOURCE_GEODE:    0,
-		},
+func NewContext(blueprint Blueprint) *Context {
+	return &Context{
+		blueprint:  blueprint,
+		robots:     [4]int{1, 0, 0, 0},
+		storage:    [4]int{0, 0, 0, 0},
+		production: -1,
 	}
 }
 
-func copyContext(from *Context) Context {
-	ctx := createContext(from.blueprint)
-	for resource, cnt := range from.production {
-		ctx.production[resource] = cnt
-	}
-	for resource, cnt := range from.robots {
-		ctx.robots[resource] = cnt
-	}
-	for resource, cnt := range from.storage {
-		ctx.storage[resource] = cnt
-	}
-	return ctx
+func (ctx *Context) Copy() *Context {
+	newCtx := NewContext(ctx.blueprint)
+	newCtx.robots = ctx.robots
+	newCtx.storage = ctx.storage
+	return newCtx
 }
 
-func isBadVariant(minute int, ctx *Context) bool {
-	if minute >= 7 && ctx.robots[RESOURCE_CLAY] == 0 {
-		return true
-	}
-	if minute >= 14 && ctx.robots[RESOURCE_OBSIDIAN] == 0 {
-		return true
-	}
-	if minute >= 20 && ctx.robots[RESOURCE_GEODE] == 0 {
-		return true
-	}
-	if minute >= 22 && ctx.robots[RESOURCE_GEODE] == 1 {
-		return true
-	}
-	return false
-}
-
-func reduceVariants(minute int, variants []Context) []Context {
-	if minute != 7 && minute != 14 && minute != 20 && minute != 22 {
-		return variants
-	}
-
-	ans := []Context{}
-	for _, ctx := range variants {
-		if !isBadVariant(minute, &ctx) {
-			ans = append(ans, ctx)
-		}
-	}
-	return ans
-}
-
-// canBuild checks if resource are enough to startProduction a certain robot.
-func canBuild(ctx *Context, robot RESOURCE_TYPE) bool {
-	for resource, cnt := range ctx.blueprint[robot] {
+// CanBuild checks if there are enough resources to StartProduction a certain robot.
+func (ctx *Context) CanBuild(robot RobotType) bool {
+	for resource, cnt := range ctx.blueprint.robots[robot] {
 		if ctx.storage[resource] < cnt {
 			return false
 		}
@@ -259,31 +139,215 @@ func canBuild(ctx *Context, robot RESOURCE_TYPE) bool {
 	return true
 }
 
-// startProduction collects resources from storage and saves info that robot production started.
-func startProduction(ctx *Context, robot RESOURCE_TYPE) {
-	for resource, cnt := range ctx.blueprint[robot] {
+// StartProduction collects resources from storage and saves info that robot production started.
+func (ctx *Context) StartProduction(robot RobotType) {
+	for resource, cnt := range ctx.blueprint.robots[robot] {
 		if ctx.storage[resource] < cnt {
-			log.Panicf("Cannot startProduction robot %d. Resource %d is not enough. Need %d got %d.", robot, resource, cnt, ctx.storage[resource])
+			log.Panicf("Cannot StartProduction robot %d. Resource %d is not enough. Need %d got %d.", robot, resource, cnt, ctx.storage[resource])
 		}
 		ctx.storage[resource] -= cnt
 	}
 
-	ctx.production[robot] += 1
+	ctx.production = robot
 }
 
-// finishProduction mark robots in production as completed
-func finishProduction(ctx *Context) {
-	for robot, cnt := range ctx.production {
-		ctx.robots[robot] += cnt
-		ctx.production[robot] -= cnt
+// FinishProduction mark robots in production as completed
+func (ctx *Context) FinishProduction() {
+	if ctx.production != -1 {
+		robot := ctx.production
+		ctx.robots[robot] += 1
+		ctx.production = -1
 	}
 }
 
-// harvest resources with existing robots and collect them to storage.
-func harvest(ctx *Context) {
+// Harvest resources with existing robots and collect them to storage.
+func (ctx *Context) Harvest() {
 	for robot, count := range ctx.robots {
 		ctx.storage[robot] += count
 	}
+}
+
+func (ctx *Context) Stringify() string {
+	return fmt.Sprintf(
+		"r [%d %d %d %d] s [%d %d %d %d]",
+		ctx.robots[RESOURCE_ORE],
+		ctx.robots[RESOURCE_CLAY],
+		ctx.robots[RESOURCE_OBSIDIAN],
+		ctx.robots[RESOURCE_GEODE],
+		ctx.storage[RESOURCE_ORE],
+		ctx.storage[RESOURCE_CLAY],
+		ctx.storage[RESOURCE_OBSIDIAN],
+		ctx.storage[RESOURCE_GEODE],
+	)
+}
+
+type ContextQueue struct {
+	queue *llq.Queue
+}
+
+func NewContextQueue() *ContextQueue {
+	return &ContextQueue{
+		queue: llq.New(),
+	}
+}
+
+func (cq *ContextQueue) Size() int {
+	return cq.queue.Size()
+}
+
+func (cq *ContextQueue) Enqueue(ctx *Context) {
+	cq.queue.Enqueue(ctx)
+}
+
+func (cq *ContextQueue) Dequeue() (*Context, bool) {
+	val, ok := cq.queue.Dequeue()
+	return val.(*Context), ok
+}
+
+type Optimiser struct {
+	maxMinutes int
+	uniqueMap  *hashmap.Map
+}
+
+func NewOptimiser(maxMinutes int) *Optimiser {
+	return &Optimiser{
+		maxMinutes: maxMinutes,
+		uniqueMap:  hashmap.New(),
+	}
+}
+
+func (o *Optimiser) Enqueue(minute int, cq *ContextQueue, ctx *Context) {
+	// no reason to queue anything at last minute
+	if minute == o.maxMinutes {
+		return
+	}
+
+	robotsKey := fmt.Sprint(ctx.robots)
+
+	storageList, storageExists := o.uniqueMap.Get(robotsKey)
+	if !storageExists {
+		storageList = [][4]int{}
+	}
+
+	// look through all saved storage variants
+	// if current context has all 4 resource lower than any saved — no reason so queue ctx
+	for _, storageVariant := range storageList.([][4]int) {
+		savedVariantBetter := true
+		for resource := 0; resource < 4; resource++ {
+			if ctx.storage[resource] > storageVariant[resource] {
+				savedVariantBetter = false
+			}
+		}
+		if savedVariantBetter {
+			return
+		}
+	}
+
+	cq.Enqueue(ctx)
+
+	newStorageList := append([][4]int{ctx.storage}, storageList.([][4]int)...)
+	o.uniqueMap.Put(robotsKey, newStorageList)
+
+	//cacheKey := ctx.Stringify()
+	//if _, exists := o.uniqueMap.Get(cacheKey); !exists {
+	//	cq.Enqueue(ctx)
+	//	o.uniqueMap.Put(cacheKey, nil)
+	//}
+}
+
+type Stats struct {
+	maxMinute         int
+	maxGeodes         int
+	maxGeodeRobots    int
+	maxObsidianRobots int
+}
+
+func NewStats() *Stats {
+	return &Stats{0, 0, 0, 0}
+}
+
+func (s *Stats) Analyze(ctx *Context) {
+	if ctx.minute > s.maxMinute {
+		s.maxMinute = ctx.minute
+		//fmt.Println("MAX MINUTE", s.maxMinute)
+	}
+	if ctx.storage[RESOURCE_GEODE] > s.maxGeodes {
+		s.maxGeodes = ctx.storage[RESOURCE_GEODE]
+		//fmt.Println("MAX GEODES", s.maxGeodes)
+	}
+	if ctx.robots[RESOURCE_GEODE] > s.maxGeodeRobots {
+		s.maxGeodeRobots = ctx.robots[RESOURCE_GEODE]
+		//fmt.Println("MAX GEODE ROBOTS", s.maxGeodeRobots)
+	}
+	if ctx.robots[RESOURCE_OBSIDIAN] > s.maxObsidianRobots {
+		s.maxObsidianRobots = ctx.robots[RESOURCE_OBSIDIAN]
+		//fmt.Println("MAX OBSIDIAN ROBOTS", s.maxObsidianRobots)
+	}
+}
+
+func findBestAlgorythm(blueprint Blueprint, maxMinutes int) int {
+	robots := []RobotType{
+		RobotType(RESOURCE_ORE),
+		RobotType(RESOURCE_CLAY),
+		RobotType(RESOURCE_OBSIDIAN),
+		RobotType(RESOURCE_GEODE),
+	}
+
+	startContext := NewContext(blueprint)
+
+	stats := NewStats()
+	optimiser := NewOptimiser(maxMinutes)
+
+	startQueue := NewContextQueue()
+	optimiser.Enqueue(0, startQueue, startContext)
+
+	thisMinuteQueue := startQueue
+	for minute := 1; minute <= maxMinutes; minute++ {
+		minuteStarted := time.Now()
+		isLastMinute := minute == maxMinutes
+
+		prevMinuteQueue := thisMinuteQueue
+		thisMinuteQueue = NewContextQueue()
+		fmt.Printf("Minute %v started. Queue size: %v.\n", minute, prevMinuteQueue.Size())
+
+		for prevMinuteQueue.Size() > 0 {
+			prevCtx, _ := prevMinuteQueue.Dequeue()
+
+			if !isLastMinute {
+				for _, robot := range robots {
+					if prevCtx.CanBuild(robot) {
+						ctx := prevCtx.Copy()
+						ctx.StartProduction(robot)
+						ctx.Harvest()
+						ctx.FinishProduction()
+
+						stats.Analyze(ctx)
+						optimiser.Enqueue(minute, thisMinuteQueue, ctx)
+					}
+				}
+			}
+
+			// save CPU for last minute loop
+			if isLastMinute && prevCtx.robots[RESOURCE_GEODE] == 0 {
+				continue
+			}
+
+			ctx := prevCtx
+			ctx.Harvest()
+			stats.Analyze(ctx)
+			optimiser.Enqueue(minute, thisMinuteQueue, ctx)
+		}
+
+		minuteProcessTime := time.Since(minuteStarted)
+		fmt.Printf("Minute %v processed in %v.\n", minute, minuteProcessTime)
+	}
+
+	//for thisMinuteQueue.Size() > 0 {
+	//	ctx, _ := thisMinuteQueue.Dequeue()
+	//	fmt.Println("r", ctx.robots, "s", ctx.storage)
+	//}
+
+	return stats.maxGeodes
 }
 
 func parseInput(input string) []Blueprint {
@@ -299,19 +363,12 @@ func parseInput(input string) []Blueprint {
 		//}
 
 		blueprints[i] = Blueprint{
-			RESOURCE_ORE: {
-				RESOURCE_ORE: cast.ToInt(parsed[2]),
-			},
-			RESOURCE_CLAY: {
-				RESOURCE_ORE: cast.ToInt(parsed[3]),
-			},
-			RESOURCE_OBSIDIAN: {
-				RESOURCE_ORE:  cast.ToInt(parsed[4]),
-				RESOURCE_CLAY: cast.ToInt(parsed[5]),
-			},
-			RESOURCE_GEODE: {
-				RESOURCE_ORE:      cast.ToInt(parsed[6]),
-				RESOURCE_OBSIDIAN: cast.ToInt(parsed[7]),
+			number: cast.ToInt(parsed[1]),
+			robots: map[RobotType]ProductionCost{
+				RobotType(RESOURCE_ORE):      {cast.ToInt(parsed[2]), 0, 0, 0},
+				RobotType(RESOURCE_CLAY):     {cast.ToInt(parsed[3]), 0, 0, 0},
+				RobotType(RESOURCE_OBSIDIAN): {cast.ToInt(parsed[4]), cast.ToInt(parsed[5]), 0, 0},
+				RobotType(RESOURCE_GEODE):    {cast.ToInt(parsed[6]), 0, cast.ToInt(parsed[7]), 0},
 			},
 		}
 	}
