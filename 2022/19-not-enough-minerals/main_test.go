@@ -44,13 +44,13 @@ func Test_part2(t *testing.T) {
 		{
 			name:  "example 1",
 			input: example,
-			want:  0,
+			want:  56 * 62,
 		},
-		//{
-		//	name:  "actual",
-		//	input: input,
-		//	want:  0,
-		//},
+		{
+			name:  "actual",
+			input: input,
+			want:  16 * 20 * 7,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -213,6 +213,26 @@ func Test_findBestAlgorythm(t *testing.T) {
 			minutes:   32,
 			want:      62,
 		},
+
+		// real values for part 2
+		{
+			input:     example,
+			blueprint: 1,
+			minutes:   32,
+			want:      16,
+		},
+		{
+			input:     example,
+			blueprint: 2,
+			minutes:   32,
+			want:      20,
+		},
+		{
+			input:     example,
+			blueprint: 3,
+			minutes:   32,
+			want:      7,
+		},
 	}
 	for _, tt := range tests {
 		tt.name = fmt.Sprintf("Bluepirnt %d. Max geodes is %d.", tt.blueprint, tt.want)
@@ -220,6 +240,29 @@ func Test_findBestAlgorythm(t *testing.T) {
 			blueprints := parseInput(tt.input)
 			if got := findBestAlgorythm(blueprints[tt.blueprint-1], tt.minutes); got != tt.want {
 				t.Errorf("findBestAlgorythm() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_MaxPossibleGeodes(t *testing.T) {
+	tests := []struct {
+		minute int
+		robots int
+		want   int
+	}{
+		{minute: 1, robots: 0, want: 0},
+		{minute: 1, robots: 1, want: 1},
+		{minute: 1, robots: 2, want: 2},
+		{minute: 2, robots: 0, want: 1},
+		{minute: 2, robots: 1, want: 3},
+		{minute: 2, robots: 2, want: 5},
+	}
+	for _, tt := range tests {
+		name := fmt.Sprintf("in %v minutes with %v robots want %v", tt.minute, tt.robots, tt.want)
+		t.Run(name, func(t *testing.T) {
+			if got := MaxPossibleGeodesAddition(tt.minute, tt.robots); got != tt.want {
+				t.Errorf("part2() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -79,10 +79,15 @@ func part1(input string) (ans int) {
 func part2(input string) (ans int) {
 	blueprints := parseInput(input)
 
+	ans = 1
 	for _, blueprint := range blueprints {
+		if blueprint.number > 3 {
+			break
+		}
+
 		maxGeodes := findBestAlgorythm(blueprint, 32)
 		fmt.Printf("Blueprint %v. Max geodes: %v.\n", blueprint.number, maxGeodes)
-		ans += blueprint.number * maxGeodes
+		ans *= maxGeodes
 	}
 
 	return ans
@@ -216,10 +221,20 @@ func NewOptimiser(maxMinutes int) *Optimiser {
 	}
 }
 
-func (o *Optimiser) Enqueue(minute int, cq *ContextQueue, ctx *Context) {
+func (o *Optimiser) Enqueue(ctx *Context, cq *ContextQueue, stats *Stats) {
 	// no reason to queue anything at last minute
-	if minute == o.maxMinutes {
+	if stats.minute == o.maxMinutes {
 		return
+	}
+
+	// what if we will create geode robot every next minute
+	// will we be able to produce more geodes than already produced by better strategy
+	if stats.maxGeodes > ctx.storage[RESOURCE_GEODE] {
+		minutesLeft := o.maxMinutes - stats.minute
+		maxPossibleGeodes := ctx.storage[RESOURCE_GEODE] + MaxPossibleGeodesAddition(minutesLeft, ctx.robots[RESOURCE_GEODE])
+		if maxPossibleGeodes < stats.maxGeodes {
+			return
+		}
 	}
 
 	robotsKey := fmt.Sprint(ctx.robots)
@@ -229,24 +244,63 @@ func (o *Optimiser) Enqueue(minute int, cq *ContextQueue, ctx *Context) {
 		storageList = [][4]int{}
 	}
 
-	// look through all saved storage variants
-	// if current context has all 4 resource lower than any saved — no reason so queue ctx
-	for _, storageVariant := range storageList.([][4]int) {
-		savedVariantBetter := true
+	shouldAddCtx := true
+	skipIndexes := map[int]bool{}
+	for index, storageVariant := range storageList.([][4]int) {
+		storageVariantBetter := true
+		storageVariantWorse := true
 		for resource := 0; resource < 4; resource++ {
-			if ctx.storage[resource] > storageVariant[resource] {
-				savedVariantBetter = false
+			if storageVariant[resource] < ctx.storage[resource] {
+				storageVariantBetter = false
+			}
+			if storageVariant[resource] > ctx.storage[resource] {
+				storageVariantWorse = false
 			}
 		}
-		if savedVariantBetter {
-			return
+
+		if storageVariantBetter {
+			shouldAddCtx = false
+		}
+		if storageVariantWorse {
+			skipIndexes[index] = true
 		}
 	}
 
-	cq.Enqueue(ctx)
+	newStorageList := [][4]int{}
+	if shouldAddCtx {
+		cq.Enqueue(ctx)
+		newStorageList = append(newStorageList, ctx.storage)
+	}
+	if len(skipIndexes) == 0 {
+		newStorageList = append(newStorageList, storageList.([][4]int)...)
+	} else {
+		for index, storageVariant := range storageList.([][4]int) {
+			if _, exists := skipIndexes[index]; !exists {
+				newStorageList = append(newStorageList, storageVariant)
+			}
+		}
+	}
 
-	newStorageList := append([][4]int{ctx.storage}, storageList.([][4]int)...)
 	o.uniqueMap.Put(robotsKey, newStorageList)
+
+	// look through all saved storage variants
+	// if current context has all 4 resource lower than any saved — no reason so queue ctx
+	//for _, storageVariant := range storageList.([][4]int) {
+	//	savedVariantBetter := true
+	//	for resource := 0; resource < 4; resource++ {
+	//		if ctx.storage[resource] > storageVariant[resource] {
+	//			savedVariantBetter = false
+	//		}
+	//	}
+	//	if savedVariantBetter {
+	//		return
+	//	}
+	//}
+	//
+	//cq.Enqueue(ctx)
+	//
+	//newStorageList := append([][4]int{ctx.storage}, storageList.([][4]int)...)
+	//o.uniqueMap.Put(robotsKey, newStorageList)
 
 	//cacheKey := ctx.Stringify()
 	//if _, exists := o.uniqueMap.Get(cacheKey); !exists {
@@ -256,55 +310,50 @@ func (o *Optimiser) Enqueue(minute int, cq *ContextQueue, ctx *Context) {
 }
 
 type Stats struct {
-	maxMinute         int
-	maxGeodes         int
-	maxGeodeRobots    int
-	maxObsidianRobots int
+	minute    int
+	maxGeodes int
 }
 
 func NewStats() *Stats {
-	return &Stats{0, 0, 0, 0}
+	return &Stats{1, 0}
+}
+
+func (s *Stats) SetMinute(minute int) {
+	s.minute = minute
 }
 
 func (s *Stats) Analyze(ctx *Context) {
-	if ctx.minute > s.maxMinute {
-		s.maxMinute = ctx.minute
-		//fmt.Println("MAX MINUTE", s.maxMinute)
-	}
 	if ctx.storage[RESOURCE_GEODE] > s.maxGeodes {
 		s.maxGeodes = ctx.storage[RESOURCE_GEODE]
-		//fmt.Println("MAX GEODES", s.maxGeodes)
 	}
-	if ctx.robots[RESOURCE_GEODE] > s.maxGeodeRobots {
-		s.maxGeodeRobots = ctx.robots[RESOURCE_GEODE]
-		//fmt.Println("MAX GEODE ROBOTS", s.maxGeodeRobots)
-	}
-	if ctx.robots[RESOURCE_OBSIDIAN] > s.maxObsidianRobots {
-		s.maxObsidianRobots = ctx.robots[RESOURCE_OBSIDIAN]
-		//fmt.Println("MAX OBSIDIAN ROBOTS", s.maxObsidianRobots)
+}
+
+func MaxPossibleGeodesAddition(minutes int, robots int) int {
+	// todo use memorisation or dynamic programming
+	if minutes == 0 {
+		return 0
+	} else if minutes == 1 {
+		return robots
+	} else {
+		return robots + MaxPossibleGeodesAddition(minutes-1, robots+1)
 	}
 }
 
 func findBestAlgorythm(blueprint Blueprint, maxMinutes int) int {
-	robots := []RobotType{
-		RobotType(RESOURCE_ORE),
-		RobotType(RESOURCE_CLAY),
-		RobotType(RESOURCE_OBSIDIAN),
-		RobotType(RESOURCE_GEODE),
-	}
-
 	startContext := NewContext(blueprint)
 
 	stats := NewStats()
 	optimiser := NewOptimiser(maxMinutes)
 
 	startQueue := NewContextQueue()
-	optimiser.Enqueue(0, startQueue, startContext)
+	optimiser.Enqueue(startContext, startQueue, stats)
 
 	thisMinuteQueue := startQueue
 	for minute := 1; minute <= maxMinutes; minute++ {
 		minuteStarted := time.Now()
 		isLastMinute := minute == maxMinutes
+
+		stats.SetMinute(minute)
 
 		prevMinuteQueue := thisMinuteQueue
 		thisMinuteQueue = NewContextQueue()
@@ -314,7 +363,25 @@ func findBestAlgorythm(blueprint Blueprint, maxMinutes int) int {
 			prevCtx, _ := prevMinuteQueue.Dequeue()
 
 			if !isLastMinute {
-				for _, robot := range robots {
+				// if we can build geode robot — we do it first and do not look into another variants
+				{
+					robot := RobotType(RESOURCE_GEODE)
+					if prevCtx.CanBuild(robot) {
+						ctx := prevCtx
+						ctx.StartProduction(robot)
+						ctx.Harvest()
+						ctx.FinishProduction()
+
+						stats.Analyze(ctx)
+						optimiser.Enqueue(ctx, thisMinuteQueue, stats)
+
+						continue
+					}
+				}
+
+				// skip GEODE, because we hardcoded it above
+				for resource := 0; resource <= 2; resource++ {
+					robot := RobotType(resource)
 					if prevCtx.CanBuild(robot) {
 						ctx := prevCtx.Copy()
 						ctx.StartProduction(robot)
@@ -322,7 +389,7 @@ func findBestAlgorythm(blueprint Blueprint, maxMinutes int) int {
 						ctx.FinishProduction()
 
 						stats.Analyze(ctx)
-						optimiser.Enqueue(minute, thisMinuteQueue, ctx)
+						optimiser.Enqueue(ctx, thisMinuteQueue, stats)
 					}
 				}
 			}
@@ -335,7 +402,7 @@ func findBestAlgorythm(blueprint Blueprint, maxMinutes int) int {
 			ctx := prevCtx
 			ctx.Harvest()
 			stats.Analyze(ctx)
-			optimiser.Enqueue(minute, thisMinuteQueue, ctx)
+			optimiser.Enqueue(ctx, thisMinuteQueue, stats)
 		}
 
 		minuteProcessTime := time.Since(minuteStarted)
