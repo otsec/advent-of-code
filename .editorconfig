@@ -20,5 +20,5 @@ trim_trailing_whitespace = false
 [Dockerfile]
 indent_size = 4
 
-[{input.txt,input_test.txt}]
+[{input.txt,input_*.txt}]
 insert_final_newline = false
