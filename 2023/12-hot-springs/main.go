@@ -14,10 +14,10 @@ import (
 var input string
 
 func init() {
-	// do this in init (not main) so test file has same input
+	// do this in init (not main) so test file has same symbols
 	input = strings.TrimRight(input, "\n")
 	if len(input) == 0 {
-		panic("empty input.txt file")
+		panic("empty symbols.txt file")
 	}
 }
 
@@ -42,7 +42,7 @@ func part1(input string) (ans int) {
 	parsed := parseInput(input)
 
 	for _, row := range parsed {
-		ans += testPossibleVariants(row.symbols, row.groups)
+		ans += testPossibleVariants(row)
 	}
 
 	return ans
@@ -50,7 +50,12 @@ func part1(input string) (ans int) {
 
 func part2(input string) (ans int) {
 	parsed := parseInput(input)
-	_ = parsed
+
+	for i, row := range parsed {
+		largeRow := makeItLarger(row)
+		ans += testPossibleVariants(largeRow)
+		fmt.Println("row", i)
+	}
 
 	return ans
 }
@@ -81,43 +86,99 @@ func parseNumbers(input string) []int {
 	return nums
 }
 
-func testPossibleVariants(input string, numbers []int) (ans int) {
+func testPossibleVariants(input InputRow) (ans int) {
 	var indexes []int
-	for i := 0; i < len(input); i++ {
-		if input[i] == '?' {
+	for i := 0; i < len(input.symbols); i++ {
+		if input.symbols[i] == '?' {
 			indexes = append(indexes, i)
 		}
 	}
 
 	if len(indexes) == 0 {
-		if isResultMatched(input, numbers) {
+		if isResultMatched(input) {
 			return 1
 		} else {
 			return 0
 		}
 	}
 
-	variant1 := strings.Replace(input, "?", "#", 1)
-	ans += testPossibleVariants(variant1, numbers)
+	if !makesSense(input) {
+		return 0
+	}
 
-	variant2 := strings.Replace(input, "?", ".", 1)
-	ans += testPossibleVariants(variant2, numbers)
+	variant1 := strings.Replace(input.symbols, "?", "#", 1)
+	ans += testPossibleVariants(InputRow{variant1, input.groups})
+
+	variant2 := strings.Replace(input.symbols, "?", ".", 1)
+	ans += testPossibleVariants(InputRow{variant2, input.groups})
 
 	return ans
 }
 
-func isResultMatched(input string, numbers []int) bool {
+func makesSense(input InputRow) bool {
+	stack := 0
+	n := 0
+	for i := 0; i < len(input.symbols); i++ {
+		if input.symbols[i] == '?' {
+			return true
+		}
+
+		if input.symbols[i] == '#' {
+			stack++
+			continue
+		}
+
+		if input.symbols[i] == '.' && stack > 0 {
+			if n >= len(input.groups) {
+				return false
+			} else if stack != input.groups[n] {
+				return false
+			} else {
+				stack = 0
+				n += 1
+			}
+		}
+	}
+
+	return true
+}
+
+func shrink(input InputRow) InputRow {
+	if input.symbols[0] == '?' {
+		return input
+	}
+
+	if input.symbols[0] == '.' {
+		newSymbols := strings.TrimLeft(input.symbols, ".")
+		input = InputRow{newSymbols, input.groups}
+	}
+
+	return input
+}
+
+func isResultMatched(input InputRow) bool {
 	re := regexp.MustCompile(`#+`)
 
-	matches := re.FindAllString(input, -1)
-	if len(matches) != len(numbers) {
+	matches := re.FindAllString(input.symbols, -1)
+	if len(matches) != len(input.groups) {
 		return false
 	}
 	for i, m := range matches {
-		if numbers[i] != len(m) {
+		if input.groups[i] != len(m) {
 			return false
 		}
 	}
 
 	return true
+}
+
+func makeItLarger(input InputRow) InputRow {
+	largeSymbols := input.symbols
+	largeGroups := input.groups
+	for i := 0; i < 4; i++ {
+		largeSymbols = largeSymbols + "?" + input.symbols
+		largeGroups = append(largeGroups, input.groups...)
+	}
+
+	return InputRow{largeSymbols, largeGroups}
 }
