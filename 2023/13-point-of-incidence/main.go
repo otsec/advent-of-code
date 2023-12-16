@@ -50,8 +50,12 @@ func part1(input string) (ans int) {
 }
 
 func part2(input string) (ans int) {
-	parsed := parseInput(input)
-	_ = parsed
+	fields := parseInput(input)
+
+	for _, f := range fields {
+		ans += findHorizontalReflectionWithDiff(&f) * 100
+		ans += findHorizontalReflectionWithDiff(f.rotate())
+	}
 
 	return ans
 }
@@ -80,6 +84,10 @@ func (f *Field) rotate() *Field {
 	return &Field{newLines}
 }
 
+func (f *Field) Print() {
+	fmt.Println(strings.Join(f.lines, "\n"))
+}
+
 func parseInput(input string) []Field {
 	groups := strings.Split(input, "\n\n")
 	ans := make([]Field, len(groups))
@@ -95,28 +103,60 @@ func findHorizontalReflection(field *Field) int {
 		if field.lines[i] == field.lines[i+1] {
 			numberLinesBefore := i + 1
 			numberLinesAfter := len(field.lines) - numberLinesBefore
-			if numberLinesBefore < numberLinesAfter {
-				continue
-			}
-
 			numberLinesCanCheck := min(numberLinesBefore, numberLinesAfter)
-			//fmt.Println(i, numberLinesBefore, numberLinesAfter, numberLinesCanCheck)
-			//fmt.Println(i+1-numberLinesCanCheck, i+1)
-			//fmt.Println(field.lines[i+1-numberLinesCanCheck : i+1])
-			//fmt.Println(i+1, i+1+numberLinesCanCheck)
-			//fmt.Println(field.lines[i+1 : i+1+numberLinesCanCheck])
 
 			linesBefore := field.lines[i+1-numberLinesCanCheck : i+1]
 			linesAfter := field.lines[i+1 : i+1+numberLinesCanCheck]
-			slices.Reverse(linesAfter)
 
-			//fmt.Println(i, linesBefore, linesAfter)
+			linesAfterReversed := make([]string, len(linesAfter))
+			copy(linesAfterReversed, linesAfter)
+			slices.Reverse(linesAfterReversed)
 
-			if reflect.DeepEqual(linesBefore, linesAfter) {
+			if reflect.DeepEqual(linesBefore, linesAfterReversed) {
 				return i + 1
 			}
 		}
 	}
 
 	return 0
+}
+
+func findHorizontalReflectionWithDiff(field *Field) int {
+	for i := 0; i < len(field.lines)-1; i++ {
+		//diff := getDiff(field.lines[i], field.lines[i+1])
+		//if diff > 1 {
+		//	continue
+		//}
+
+		t, b := i, i+1
+		diff := 0
+		for {
+			diff += getDiff(field.lines[t], field.lines[b])
+			if diff > 1 {
+				break
+			}
+			if t == 0 || b == len(field.lines)-1 {
+				break
+			} else {
+				t--
+				b++
+			}
+		}
+
+		if diff == 1 {
+			return i + 1
+		}
+	}
+
+	return 0
+}
+
+func getDiff(line1, line2 string) int {
+	ans := 0
+	for i := 0; i < len(line1); i++ {
+		if line1[i] != line2[i] {
+			ans++
+		}
+	}
+	return ans
 }
