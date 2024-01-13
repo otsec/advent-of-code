@@ -59,3 +59,39 @@ func Test_part2(t *testing.T) {
 		})
 	}
 }
+
+func Test_slideBytes(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: "....OO",
+			want:  "OO....",
+		},
+		{
+			input: "..#.OO",
+			want:  "..#OO.",
+		},
+		{
+			input: ".O#.OO",
+			want:  "O.#OO.",
+		},
+		{
+			input: "OO..O##..O",
+			want:  "OOO..##O..",
+		},
+	}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			copiedInput := make([]byte, len(tt.input))
+			copy(copiedInput, tt.input)
+			slideBytes(copiedInput)
+			got := string(copiedInput)
+
+			if got != tt.want {
+				t.Errorf("slideBytes(%v) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
