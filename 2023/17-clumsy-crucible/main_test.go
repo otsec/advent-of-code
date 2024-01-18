@@ -19,11 +19,11 @@ func Test_part1(t *testing.T) {
 			input: example,
 			want:  102,
 		},
-		//{
-		//	name:  "actual",
-		//	input: input,
-		//	want:  0,
-		//},
+		{
+			name:  "actual",
+			input: input,
+			want:  851,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,13 +43,13 @@ func Test_part2(t *testing.T) {
 		{
 			name:  "example 1",
 			input: example,
-			want:  0,
+			want:  94,
 		},
-		//{
-		//	name:  "actual",
-		//	input: input,
-		//	want:  0,
-		//},
+		{
+			name:  "actual",
+			input: input,
+			want:  982,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

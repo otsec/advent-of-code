@@ -5,9 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/alexchao26/advent-of-code-go/util"
-	"github.com/emirpasic/gods/queues/linkedlistqueue"
+	"github.com/emirpasic/gods/queues/priorityqueue"
 	"github.com/emirpasic/gods/sets/hashset"
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,52 +41,82 @@ func main() {
 }
 
 func part1(input string) (ans int) {
-	field := NewCharField(input, '.')
-	ans = math.MaxInt
+	return findPath(input, 0, 3)
+}
+
+func part2(input string) (ans int) {
+	return findPath(input, 4, 10)
+}
+
+func findPath(input string, minStraight, maxStraight int) int {
+	field := NewIntField(input, '.')
 
 	startCoord := Coord{0, 0}
-	startHistory := NewHistory()
-	startVariant := Variant{startCoord, field.At(startCoord), startHistory}
-
 	finishCoord := Coord{field.Width() - 1, field.Height() - 1}
 
-	queue := linkedlistqueue.New()
-	queue.Enqueue(startVariant)
+	queue := priorityqueue.NewWith(func(a, b interface{}) int {
+		varA := a.(Variant)
+		varB := b.(Variant)
+		return varA.heat - varB.heat
+	})
+
+	next := []Direction{Right, Bottom}
+	for _, dir := range next {
+		coord := startCoord.Next(dir)
+		heat := field.At(coord)
+		queue.Enqueue(Variant{coord, dir, 1, heat})
+	}
+
+	// key is Variant without hear
+	// value is heat
+	// for type safety we will recreate Variant with 0 heat
+	memory := map[Variant]int{}
+
 	for !queue.Empty() {
 		item, _ := queue.Dequeue()
 		variant := item.(Variant)
 
-		if reflect.DeepEqual(variant.curr, finishCoord) {
-			ans = min(ans, variant.heat)
-			continue
+		memKey := Variant{variant.coord, variant.dir, variant.dirInRow, 0}
+		if prevHeat, exists := memory[memKey]; exists {
+			if prevHeat <= variant.heat {
+				continue
+			}
+		}
+		memory[memKey] = variant.heat
+
+		if reflect.DeepEqual(variant.coord, finishCoord) {
+			return variant.heat
 		}
 
-		candidates := []Coord{variant.curr.Top(), variant.curr.Right(), variant.curr.Bottom(), variant.curr.Left()}
-		for _, c := range candidates {
-			if !field.Within(c) {
-				continue
-			}
-			if variant.Was(c) {
+		candidates := []Direction{Top, Right, Bottom, Left}
+		for _, dir := range candidates {
+			if isOpposite(dir, variant.dir) {
 				continue
 			}
 
-			newHeat := variant.heat + field.At(c)
-			newHistory := variant.history.Copy()
-			newHistory.Add(c)
-			newVariant := Variant{c, newHeat, newHistory}
+			coord := variant.coord.Next(dir)
+			if !field.Within(coord) {
+				continue
+			}
 
-			queue.Enqueue(newVariant)
+			if dir != variant.dir && variant.dirInRow < minStraight {
+				continue
+			}
+
+			dirInRow := 1
+			if dir == variant.dir {
+				dirInRow = variant.dirInRow + 1
+			}
+			if dirInRow > maxStraight {
+				continue
+			}
+
+			heat := variant.heat + field.At(coord)
+			queue.Enqueue(Variant{coord, dir, dirInRow, heat})
 		}
 	}
 
-	return ans
-}
-
-func part2(input string) (ans int) {
-	parsed := parseInput(input)
-	_ = parsed
-
-	return ans
+	panic("route not found")
 }
 
 type Direction int
@@ -99,8 +128,33 @@ const (
 	Left
 )
 
+func isOpposite(d1, d2 Direction) bool {
+	if min(d1, d2) == Top && max(d1, d2) == Bottom {
+		return true
+	}
+	if min(d1, d2) == Right && max(d1, d2) == Left {
+		return true
+	}
+	return false
+}
+
 type Coord struct {
 	x, y int
+}
+
+func (c *Coord) Next(dir Direction) Coord {
+	switch dir {
+	case Top:
+		return Coord{c.x, c.y - 1}
+	case Right:
+		return Coord{c.x + 1, c.y}
+	case Bottom:
+		return Coord{c.x, c.y + 1}
+	case Left:
+		return Coord{c.x - 1, c.y}
+	default:
+		panic(fmt.Sprintf("unknown dir %v", dir))
+	}
 }
 
 func (c *Coord) Top() Coord {
@@ -123,7 +177,7 @@ type IntField struct {
 	lines [][]int
 }
 
-func NewCharField(input string, emptyChar byte) *IntField {
+func NewIntField(input string, emptyChar byte) *IntField {
 	stringLines := strings.Split(input, "\n")
 	numLines := make([][]int, len(stringLines))
 	for i, line := range stringLines {
@@ -207,13 +261,10 @@ func (h *History) Copy() *History {
 }
 
 type Variant struct {
-	curr    Coord
-	heat    int
-	history *History
-}
-
-func (v *Variant) Was(c Coord) bool {
-	return v.history.Was(c)
+	coord    Coord
+	dir      Direction
+	dirInRow int
+	heat     int
 }
 
 func parseInput(input string) []string {
