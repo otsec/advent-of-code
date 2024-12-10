@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/alexchao26/advent-of-code-go/util"
+	"os/exec"
 	"strings"
 )
 
@@ -27,11 +28,11 @@ func main() {
 
 	if part == 1 {
 		ans := part1(input)
-		util.CopyToClipboard(fmt.Sprintf("%v", ans))
+		CopyToClipboard(fmt.Sprintf("%v", ans))
 		fmt.Println("Output:", ans)
 	} else {
 		ans := part2(input)
-		util.CopyToClipboard(fmt.Sprintf("%v", ans))
+		CopyToClipboard(fmt.Sprintf("%v", ans))
 		fmt.Println("Output:", ans)
 	}
 }
@@ -52,4 +53,21 @@ func part2(input string) (ans int) {
 
 func parseInput(input string) []string {
 	return strings.Split(input, "\n")
+}
+
+// CopyToClipboard is for macOS
+func CopyToClipboard(text string) error {
+	command := exec.Command("pbcopy")
+	command.Stdin = bytes.NewReader([]byte(text))
+
+	if err := command.Start(); err != nil {
+		return fmt.Errorf("error starting pbcopy command: %w", err)
+	}
+
+	err := command.Wait()
+	if err != nil {
+		return fmt.Errorf("error running pbcopy %w", err)
+	}
+
+	return nil
 }
